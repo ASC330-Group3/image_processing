@@ -5,18 +5,15 @@ import roslib
 import rospy
 import tf
 
-def handle_platform_pose(pose, platform_name):
-    br = tf.TransformBroadcaster()
+rospy.init_node('platform_tf_broadcaster')
+platform_name = rospy.get_param('~platform') # Reutrns the argument from launch file
+rate = rospy.Rate(10) # 10hz
+br = tf.TransformBroadcaster()
+
+while not rospy.is_shutdown():
     br.sendTransform((pose.x, pose.y, 0),
                      tf.transformations.quaternion_from_euler(0, 0, pose.theta),
                      rospy.Time.now(),
-                     platform_name,
+                     "base_link", # platform_name
                      "world")
-
-if __name__ == '__main__':
-    rospy.init_node('platform_tf_broadcaster')
-    platform_name = rospy.get_param('~platform')
-
-    while 1:
-        handle_platform_pose([0, 0, 0], platform_name)
-    #rospy.spin()
+    rate.sleep()
