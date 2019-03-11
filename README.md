@@ -5,7 +5,7 @@ The is part of university group project for the ACS330 module.
 
 ## Installation
 
-```
+```bash
 cd catkin_ws/src
 git clone https://github.com/ASC330-Group3/platform_nav.git
 cd platform_nav/nodes
@@ -19,9 +19,10 @@ source devel/setup.bash
 ## Usage
 
 In terminal 1 run:
-```
+```bash
 roscore
 ```
 In terminal 2 run:
-```
+```bash
 roslaunch platform_nav move_base
+```
