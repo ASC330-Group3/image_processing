@@ -9,4 +9,4 @@ global_costmap:
   static_map: true
   rolling_window: false
   inflation_radius: 2.5
-  resolution: 0.1
+  resolution: 0.005
