@@ -12,16 +12,17 @@ rospy.init_node('tf_broadcaster')
 rate = rospy.Rate(20) # 10hz
 br = tf.TransformBroadcaster()
 
-
+"""
 pose ={ # For testing
     "x":3,
     "y":1,
     "theta":3.14
 }
+"""
 
 while not rospy.is_shutdown():
-    br.sendTransform((pose["x"], pose["y"], 0),
-                     tf.transformations.quaternion_from_euler(0, 0, pose["theta"]),
+    br.sendTransform((3, 1, 0),
+                     tf.transformations.quaternion_from_euler(0, 0, 3.14),
                      rospy.Time.now(),
                      "/base_link", # platform_name
                      "/map")
