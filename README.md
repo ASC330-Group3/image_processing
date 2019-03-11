@@ -23,5 +23,5 @@ $ roscore
 ```
 In terminal 2 run:
 ```shell
-$ roslaunch platform_nav move_base
+$ roslaunch platform_nav move_base.launch
 ```
