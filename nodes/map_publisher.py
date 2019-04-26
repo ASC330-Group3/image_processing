@@ -9,98 +9,137 @@ sys.path.insert(0, '/home/mk_99/catkin_ws/src/platform_nav/OpenCV')
 
 import tf
 import rospy
-import math
 import CostMap as cm
-from math import sin, cos, pi
-from nav_msgs.msg import Odometry
-from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import Odometry, OccupancyGrid
+#from nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
-map = cm.map_capture(1)
+raw_map = cm.map_capture(1)
 
-pub = rospy.Publisher('map', OccupancyGrid, queue_size=10)
-odom_pub = rospy.Publisher("odom", Odometry, queue_size=50)
+tf_pub = tf.TransformBroadcaster()
+#rospy.Publisher('topic_name', std_msgs.msg.String, queue_size=10)
+map_pub = rospy.Publisher('map', OccupancyGrid, queue_size=10)
+odom_pub = rospy.Publisher("odom", Odometry, queue_size=10)
 
+# Initializing Node
 rospy.init_node('custom_script', anonymous=True)
 
-br = tf.TransformBroadcaster()
-
-rate = rospy.Rate(10) # 10hz
+rate = rospy.Rate(20) # 10hz
 
 old_x = 0
 old_y = 0
 old_th = 0
 last_time = rospy.Time.now()
 
-msg = OccupancyGrid()
-msg.info.resolution = 0.005
-msg.info.width = 640  #resolution width
-msg.info.height = 480 #resolution height
+global_frame = "map" # odom
+child_frame = "base_link"
+
+map_msg = OccupancyGrid()
+map_msg.info.width = 640  # Map width
+map_msg.info.height = 480  # Map height
+map_msg.info.resolution = 0.005 # Map resolution
+map_msg.header.frame_id = global_frame # New
+
+odom_msg = Odometry()
+odom_msg.header.frame_id = global_frame # odom
+odom_msg.child_frame_id = child_frame
 
 while not rospy.is_shutdown():
-    transform_data = map.get_transform()
-
-    msg.data = map.get_new_frame() #pass Frame here
-    pub.publish(msg)
     #rospy.loginfo(msg)
+    transform_data = raw_map.get_transform()
 
-    if transform_data["state"] == 1:
-        br.sendTransform((transform_data["x"]*0.005, transform_data["y"]*0.005, 0),
-                         tf.transformations.quaternion_from_euler(0, 0, transform_data["angle"]),
-                         rospy.Time.now(),
-                         "base_link", # child frame
-                         "odom") # Parent frame
-        #rospy.loginfo("New tf sent!")
+    current_time = rospy.Time.now()
 
-        current_time = rospy.Time.now()
-        '''
-        odom_broadcaster.sendTransform(
-        (x, y, 0.),
-        odom_quat,
-        current_time,
-        "base_link",
-        "odom"
-        )
-        '''
+    map_msg.header.stamp = current_time # New
+    map_msg.info.map_load_time= current_time # New
+    map_msg.data = raw_map.get_new_frame() #pass Frame here
 
-        # next, we'll publish the odometry message over ROS
-        odom = Odometry()
-        current_time = rospy.Time.now()
-        odom.header.stamp = current_time
-        odom.header.frame_id = "odom"
+    # Publishing the map
+    map_pub.publish(map_msg)
 
-        x = transform_data["x"]*0.005
-        y = transform_data["y"]*0.005
-        th = transform_data["angle"]
-        odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
+    try:
+        if transform_data["state"] == 1:
+            #rospy.loginfo("New tf sent!")
 
-        # set the position
-        #odom.pose.pose = Pose(Point(str(x), str(y), "0"), str(Quaternion(odom_quat)))
+            # Getting the robot's position
+            x = transform_data["x"]*0.005
+            y = transform_data["y"]*0.005
+            th = transform_data["angle"]
+            odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
 
-        odom.pose.pose.position.x = x
-        odom.pose.pose.position.y = y
-        odom.pose.pose.position.z = 0
+            # Publshing the transforms
+            tf_pub.sendTransform((x, y, 0),
+                             odom_quat,
+                             current_time,
+                             child_frame, # child frame
+                             global_frame) # Parent frame odom
 
-        odom.pose.pose.orientation = Quaternion(*odom_quat)
+            odom_msg.header.stamp = current_time
 
-        dt = (current_time - last_time).to_sec()
-        vx = (x - old_x)/dt
-        vy = (y - old_y)/ dt
-        vth = (th - old_th)/ dt
+            # Setting the pose of the robot
+            odom_msg.pose.pose.position.x = x
+            odom_msg.pose.pose.position.y = y
+            odom_msg.pose.pose.position.z = 0
+            odom_msg.pose.pose.orientation = Quaternion(*odom_quat)
 
-        # set the velocity
-        odom.child_frame_id = "base_link"
-        odom.twist.twist.linear = Vector3(vx, vy, 0)
-        odom.twist.twist.angular = Vector3(0, 0, vth)
+            # calculating velocities
+            dt = (current_time - last_time).to_sec()
+            vx = (x - old_x)/dt
+            vy = (y - old_y)/ dt
+            vth = (th - old_th)/ dt
 
-        # publish the message
-        odom_pub.publish(odom)
+            # Setting the velocities
+            odom_msg.twist.twist.linear = Vector3(vx, vy, 0)
+            odom_msg.twist.twist.angular = Vector3(0, 0, vth)
 
-        old_x = x
-        old_y = y
-        old_th = th
-        last_time = current_time
-    else:
-        rospy.loginfo("lol tf failed")
+            # Publishing the odometery message
+            odom_pub.publish(odom_msg)
 
+            # Recording the values for the next loop Iteration
+            old_x = x
+            old_y = y
+            old_th = th
+            last_time = current_time
+
+        else:
+            #rospy.loginfo("lol tf failed")
+
+            # Getting the robot's position
+            x = 1
+            y = 1
+            th = 0
+            odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
+
+            # Publshing the transforms
+            tf_pub.sendTransform((x, y, 0),
+                             odom_quat,
+                             current_time,
+                             child_frame, # child frame
+                             global_frame) # Parent frame odom
+
+            odom_msg.header.stamp = current_time
+
+            # Setting the pose of the robot
+            odom_msg.pose.pose.position.x = x
+            odom_msg.pose.pose.position.y = y
+            odom_msg.pose.pose.position.z = 0
+            odom_msg.pose.pose.orientation = Quaternion(*odom_quat)
+
+            # calculating velocities
+            dt = (current_time - last_time).to_sec()
+            vx = (x - old_x)/dt
+            vy = (y - old_y)/ dt
+            vth = (th - old_th)/ dt
+
+            # Setting the velocities
+            odom_msg.twist.twist.linear = Vector3(vx, vy, 0)
+            odom_msg.twist.twist.angular = Vector3(0, 0, vth)
+
+            # Publishing the odometery message
+            odom_pub.publish(odom_msg)
+
+    except:
+        #rospy.loginfo(str(transform_data))
+        #rospy.loginfo("Was about to die")
+        pass
     rate.sleep()
