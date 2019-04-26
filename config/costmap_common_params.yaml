@@ -1,16 +1,33 @@
 #obstacle_range: 0.1
 #raytrace_range: 0.3
 footprint: [[0.12, 0.14], [0.12, -0.14], [-0.12, -0.14], [-0.12, 0.14]]
+
 map_topic: /map
-inflation_radius: 0.1
-#resolution: 0.005
-#map_type: voxel
 
-#max_obstacle_height: 0.60
+inflation_radius: 0.01
 
-#subscribe_to_updates: true
-#observation_sources: laser_scan_sensor
-#laser_scan_sensor: {sensor_frame: laser_frame, data_type: LaserScan, topic: scan, marking: true, clearing: true}
-#global_frame: map
-#robot_base_frame: /base_link
-#always_send_full_costmap: true
+resolution: 0.005
+
+global_frame: map
+robot_base_frame: base_link
+
+always_send_full_costmap: true
+subscribe_to_updates: true
+
+update_frequency: 2.5
+publish_frequency: 2.5
+
+transform_tolerance: 3 #0.5
+
+static_map: true
+rolling_window: false
+
+plugins:
+     - {name: static_layer,            type: "costmap_2d::StaticLayer"}
+     - {name: obstacle_layer,          type: "costmap_2d::VoxelLayer"}
+     - {name: inflation_layer,         type: "costmap_2d::InflationLayer"}
+
+inflation_layer:
+  enabled:              true
+  cost_scaling_factor:  5.0  # exponential rate at which the obstacle cost drops off (default: 10)
+  inflation_radius:     0.3  # max. distance from an obstacle at which costs are incurred for planning paths.
